@@ -352,6 +352,66 @@ def check_node_crash(spy_link):
         except requests.RequestException:
             return "Error while sending request to url"
 
+def get_lease(build_log_response,job_platform):
+    '''
+    Gets lease/region where cluster is deployed.
+    parameter:
+       build_log_response: build log response.
+       job_platform(string):The infrastructure where the cluster is deployed.
+    Returns:
+        lease(string): Acquired lease/region
+    '''
+    lease = ""
+    zone_log_re = re.compile('(Acquired 1 lease\(s\) for {}-quota-slice: \[)([^]]+)(\])'.format(job_platform), re.MULTILINE|re.DOTALL)
+    zone_log_match = zone_log_re.search(build_log_response.text)
+    if zone_log_match is None:
+        lease = "Failed to fetch lease information"
+    else:
+        lease = zone_log_match.group(2)
+    return lease
+
+def get_nightly(build_log_url,build_log_response, job_platform):
+
+    '''
+    Gets nightly image used.
+    parameter:
+       build_log_url(string): link to access the logs of the job.
+       build_log_response: build log response.
+       job_platform(string): Architecture (ppc64le or s390x or multi).
+    Returns:
+        nightly(string): Nighlty image used.
+    '''
+ 
+    if "upgrade" not in build_log_url:
+        nightly_log_re = re.compile('(Resolved release {}-latest to (\S+))'.format(job_platform), re.MULTILINE|re.DOTALL)
+        nightly_log_match = nightly_log_re.search(build_log_response.text)
+        if nightly_log_match is None:
+            if job_platform == 'multi':
+                nightly = "Failed to fetch nightly image"
+            else:
+                rc_nightly_log_re = re.compile('(Using explicitly provided pull-spec for release {}-latest \((\S+)\))'.format(job_platform), re.MULTILINE|re.DOTALL)
+                rc_nightly_log_match = rc_nightly_log_re.search(build_log_response.text)
+                if rc_nightly_log_match is None:
+                    nightly = "Unable to fetch nightly information- No match found"
+                else:
+                    nightly = rc_nightly_log_match.group(2)
+        else:
+            nightly = job_platform+"-latest-"+ nightly_log_match.group(2)
+    else:
+        nightly_initial_log_re = re.compile('(Resolved release {}-initial to (\S+))'.format(job_platform), re.MULTILINE|re.DOTALL)
+        nightly_initial_log_match = nightly_initial_log_re.search(build_log_response.text)
+        if nightly_initial_log_match is None:
+            nightly = "Unable to fetch nightly {}-initial information- No match found".format(job_platform)
+        else:
+            nightly = job_platform+"-initial-"+ nightly_initial_log_match.group(2)
+        nightly_latest_log_re = re.compile('(Resolved release {}-latest to (\S+))'.format(job_platform), re.MULTILINE|re.DOTALL)
+        nightly_latest_log_match = nightly_latest_log_re.search(build_log_response.text)
+        if nightly_latest_log_match is None:
+            nightly = nightly + " Unable to fetch nightly {}-latest information- No match found".format(job_platform)
+        else:
+            nightly = nightly +" "+job_platform+"-latest-"+ nightly_latest_log_match.group(2)
+    return nightly
+
 def get_quota_and_nightly(spy_link):
 
     '''
@@ -367,109 +427,35 @@ def get_quota_and_nightly(spy_link):
 
     _,job_platform = job_classifier(spy_link)
     lease = ""
+    build_log_url = PROW_VIEW_URL + spy_link[8:] + "/build-log.txt"
+    try:
+        build_log_response = requests.get(build_log_url, verify=False, timeout=15)
+        if 'ppc64le' in spy_link:      
+            if job_platform == "libvirt":
+                job_platform+="-ppc64le"
+            elif job_platform == "powervs":
+                job_platform+="-[1-9]"
+            lease = get_lease(build_log_response,job_platform)
+            nightly = get_nightly(build_log_url,build_log_response, 'ppc64le')
 
-    if 'ppc64le' in spy_link:
-        build_log_url = PROW_VIEW_URL + spy_link[8:] + "/build-log.txt"
-        if job_platform == "libvirt":
-            job_platform+="-ppc64le"
-        elif job_platform == "powervs":
-            job_platform+="-[1-9]"
+        elif 's390x' in spy_link:     
+            if job_platform == "libvirt":
+                job_platform+="-s390x"
+            lease = get_lease(build_log_response,job_platform )
+            nightly = get_nightly(build_log_url,build_log_response, 's390x')
 
-        zone_log_re = re.compile('(Acquired 1 lease\(s\) for {}-quota-slice: \[)([^]]+)(\])'.format(job_platform), re.MULTILINE|re.DOTALL)
-        try:
-            build_log_response = requests.get(build_log_url, verify=False, timeout=15)
-            zone_log_match = zone_log_re.search(build_log_response.text)
-            if zone_log_match is None:
-                lease = "Failed to fetch lease information"
-            else:
-                lease = zone_log_match.group(2)
-    # Fetch the nightly information for non-upgrade jobs
-            if "upgrade" not in build_log_url:
-                nightly_log_re = re.compile('(Resolved release ppc64le-latest to (\S+))', re.MULTILINE|re.DOTALL)
-                nightly_log_match = nightly_log_re.search(build_log_response.text)
-                if nightly_log_match is None:
-                    rc_nightly_log_re = re.compile('(Using explicitly provided pull-spec for release ppc64le-latest \((\S+)\))', re.MULTILINE|re.DOTALL)
-                    rc_nightly_log_match = rc_nightly_log_re.search(build_log_response.text)
-                    if rc_nightly_log_match is None:
-                        nightly = "Unable to fetch nightly information- No match found"
-                    else:
-                        nightly = rc_nightly_log_match.group(2)
-                else:
-                    nightly = "ppc64le-latest-"+ nightly_log_match.group(2)
-    # Fetch nightly information for upgrade jobs- fetch both ppc64le-initial and ppc64le-latest
-            else:
-                nightly_initial_log_re = re.compile('(Resolved release ppc64le-initial to (\S+))', re.MULTILINE|re.DOTALL)
-                nightly_initial_log_match = nightly_initial_log_re.search(build_log_response.text)
-                if nightly_initial_log_match is None:
-                    nightly = "Unable to fetch nightly ppc64le-initial information- No match found"
-                else:
-                    nightly = "ppc64le-initial-"+ nightly_initial_log_match.group(2)
-                nightly_latest_log_re = re.compile('(Resolved release ppc64le-latest to (\S+))', re.MULTILINE|re.DOTALL)
-                nightly_latest_log_match = nightly_latest_log_re.search(build_log_response.text)
-                if nightly_latest_log_match is None:
-                    nightly = nightly + " Unable to fetch nightly ppc64le-latest information- No match found"
-                else:
-                    nightly = nightly + " ppc64le-latest-"+ nightly_latest_log_match.group(2)
-            return lease, nightly
-        except requests.Timeout:
-            return "Request timed out"
-        except requests.RequestException:
-            return "Error while sending request to url"
-    
-    elif 's390x' in spy_link:
-        build_log_url = PROW_VIEW_URL + spy_link[8:] + "/build-log.txt"
-        if job_platform == "libvirt":
-            job_platform+="-s390x"
-
-        zone_log_re = re.compile('(Acquired 1 lease\(s\) for {}-quota-slice: \[)([^]]+)(\])'.format(job_platform), re.MULTILINE|re.DOTALL)
-        try:
-            build_log_response = requests.get(build_log_url, verify=False, timeout=15)
-            zone_log_match = zone_log_re.search(build_log_response.text)
-            if zone_log_match is None:
-                lease = "Failed to fetch lease information"
-            else:
-                lease = zone_log_match.group(2)
-            nightly_log_re = re.compile('(Resolved release s390x-latest to (\S+))', re.MULTILINE|re.DOTALL)
-            nightly_log_match = nightly_log_re.search(build_log_response.text)
-            if nightly_log_match is None:
-                rc_nightly_log_re = re.compile('(Using explicitly provided pull-spec for release s390x-latest \((\S+)\))', re.MULTILINE|re.DOTALL)
-                rc_nightly_log_match = rc_nightly_log_re.search(build_log_response.text)
-                if rc_nightly_log_match is None:
-                    nightly = "Unable to fetch nightly information- No match found"
-                else:
-                    nightly = rc_nightly_log_match.group(2)
-            else:
-                nightly = "s390x-latest-"+ nightly_log_match.group(2)
-            return lease, nightly
-        except requests.Timeout:
-            return "Request timed out"
-        except requests.RequestException:
-            return "Error while sending request to url"
-    else:     
-        build_log_url = PROW_VIEW_URL + spy_link[8:] + "/build-log.txt"
-        try:
-            build_log_response = requests.get(build_log_url, verify=False, timeout=15)
-            # lease is not applicable for SNO hence checking only for MCE
-            if "mce" in spy_link:
-                job_platform = "aws" #currently it contains only aws hence hardcoding
-                zone_log_re = re.compile('(Acquired 1 lease\(s\) for {}-quota-slice: \[)([^]]+)(\])'.format(job_platform), re.MULTILINE|re.DOTALL)
-                zone_log_match = zone_log_re.search(build_log_response.text)
-                if zone_log_match is None:
-                    lease = "Failed to fetch lease information"
-                else:
-                    lease = zone_log_match.group(2)
-            nightly_log_re = re.compile('(Resolved release multi-latest to (\S+))', re.MULTILINE|re.DOTALL)
-            nightly_log_match = nightly_log_re.search(build_log_response.text)
-            if nightly_log_match is None:
-                nightly = "Failed to fetch nightly image"
-            else:
-                nightly = "multi-latest-"+ nightly_log_match.group(2)
-            return lease, nightly
-        except requests.Timeout:
-            return "Request timed out"
-        except requests.RequestException:
-            return "Error while sending request to url"
-
+        elif "mce" in spy_link:
+            job_platform = "aws"
+            lease = get_lease(build_log_response,job_platform )
+            nightly = get_nightly(build_log_url,build_log_response, "multi")
+        else:
+            # lease is not applicable for SNO
+            nightly = get_nightly(build_log_url,build_log_response, "multi")    
+        return lease, nightly
+    except requests.Timeout:
+        return "Request timed out"
+    except requests.RequestException:
+        return "Error while sending request to url"
 
 def job_classifier(spy_link):
 
