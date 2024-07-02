@@ -374,16 +374,28 @@ def get_node_status(spy_link):
     
     node_log_url = PROW_VIEW_URL + spy_link[8:] + \
         "/artifacts/" + job_type +"/artifacts/oc_cmds/nodes"
+    
+    pattern=r"(\d+\.\d+)"
+    match=re.search(pattern,spy_link[8:])
+    version=float(match.group(1))
+    if "upgrade" in spy_link:
+        version=version-0.01
+    
  
     try:
         node_log_response = requests.get(node_log_url, verify=False, timeout=15)
         if "NAME" in node_log_response.text:
+            if version > 4.15 and job_platform == "libvirt":
+                workers="compute-"   
+            else:
+                workers="worker-"
+    
             response_str=node_log_response.text
             if "NotReady" in response_str:
                 return "Some Nodes are in NotReady state"
             elif response_str.count("control-plane,master") != 3:
                 return "Not all master nodes are up and running"
-            elif ((job_platform == "mce" or "compact" in node_log_url ) and response_str.count("worker") != 3) or ((job_platform != "mce" and "compact" not in node_log_url) and response_str.count("worker-") != 2): 
+            elif ((job_platform == "mce" or "compact" in node_log_url ) and response_str.count("worker") != 3) or ((job_platform != "mce" and "compact" not in node_log_url) and response_str.count(workers) != 2):
                 return "Not all worker nodes are up and running"
         else:
             return "Node details not found"
@@ -1101,7 +1113,7 @@ def get_next_page_first_build_date(ci_next_page_spylink,end_date):
 def get_brief_job_info(build_list,prow_ci_name,zone=None):
 
     """
-    Gets brief information of all the jobs.
+    Gets brief information of all the jobs
 
     Args:
         build_list: list of builds
