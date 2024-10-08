@@ -250,7 +250,7 @@ def cluster_deploy_status(spy_link):
         if "sno" in spy_link:
             job_log_url = PROW_VIEW_URL + spy_link[8:] + '/artifacts/' + job_type + '/upi-install-powervs-sno/finished.json'
 
-        if version>=4.16:
+        if version>=4.16 and job_platform != "powervs":
             job_log_url = PROW_VIEW_URL + spy_link[8:] + '/artifacts/' + job_type + '/upi-install-' + job_platform +'/finished.json'
 
         try:
@@ -570,13 +570,14 @@ def job_classifier(spy_link):
     '''
 
     pattern = r'ocp.*?/'
-    if "mce" in spy_link or "capi" in  spy_link:
+    if "mce" in spy_link:
         pattern = r'e2e.*?/'
     match = re.search(pattern,spy_link)
 
     if match:
         job_type = match.group(0)
         job_type = job_type.rstrip('/')
+
     
     job_platform = "mce"
     if spy_link.find("powervs") != -1:
@@ -858,8 +859,7 @@ def get_all_failed_tc(spylink,jobtype):
 
     conformance_failed_tc_count = len(failed_tc["conformance"])
     symptom_failed_tc_count = len(failed_tc["symptom_detection"])
-
-    if ("4.15" in spylink or "4.16" in spylink) and (not "mce" in spylink):
+    if ("4.14" not in spylink and  "4.13" not in spylink) and (not "mce" in spylink):
         monitor, monitor_err_obj=get_failed_monitor_testcases(spylink,jobtype)
         failed_tc = {"conformance": conformance, "monitor": monitor, "symptom_detection": symptom_detection}
         monitor_failed_tc_count = len(failed_tc["monitor"])
@@ -867,7 +867,7 @@ def get_all_failed_tc(spylink,jobtype):
         monitor, monitor_err_obj = get_failed_monitor_testcases_from_xml(spylink,jobtype)
         failed_tc = {"conformance": conformance, "monitor": monitor, "symptom_detection": symptom_detection}
         monitor_failed_tc_count = len(failed_tc["monitor"])
-    
+
     failed_tc_count=conformance_failed_tc_count+symptom_failed_tc_count+monitor_failed_tc_count
     error_object = {"conformance": conformance_error_obj, "monitor": monitor_err_obj, "symptom_detection": symptom_error_obj}
 
