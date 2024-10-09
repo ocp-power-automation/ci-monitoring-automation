@@ -145,7 +145,7 @@ def get_testcase_failure(spylinks, zone, tc_name):
     print("--------------------------------------------------------------------------------------------------")
     print("\n")
 
-def display_ci_links(config_data):
+def display_ci_links(config_data,job_platform):
 
     '''
     Gets selected CI input.
@@ -165,9 +165,11 @@ def display_ci_links(config_data):
 
     if JENKINS == "False":
         for ci_name in config_data.keys():
-            j=j+1
-            ci_name_list.append(ci_name)
-            print(j,'',ci_name)
+            if any(w in ci_name for w in job_platform):
+                j=j+1
+                ci_name_list.append(ci_name)
+                print(j,"",ci_name)
+
         j=j+1
         print(j, " All the above")
         option = input("Select the required ci's serial number with a space ")
@@ -192,8 +194,9 @@ def display_ci_links(config_data):
         selected_ci = config_vars.get('Settings', 'selected_ci')
         options_int_list = [int(value) for value in selected_ci.split(',')]
 
-    if len(config_data)+1 in options_int_list:
-        return config_data
+   
+    if options_int_list[0]==j:
+       options_int_list=list(range(1,j))
 
     for i in options_int_list:
         config_temp_data = {ci_name_list[i-1]: config_data[ci_name_list[i-1]]}
@@ -241,9 +244,11 @@ def main():
     parser = argparse.ArgumentParser(description='Get the job history')
     parser.add_argument('--zone', help='specify the lease/zone', type= lambda arg:arg.split(','))
     parser.add_argument('--job_type', default='p', choices=['p','z','pa'], help= 'Specify the CI job type (Power(p) or s390x(z) or Power Auxillary(pa)), default is p')
+    parser.add_argument('--job_platform',default=' ')
 
     args = parser.parse_args()
-
+    job_platform=args.job_platform.split(",")
+   
     if args.job_type == 'p':
         config_file = 'p_periodic.json'
     elif args.job_type == 'z':
@@ -253,8 +258,8 @@ def main():
     
     monitor.PROW_URL = monitor.set_prow_url(args.job_type)
     config_data = monitor.load_config(config_file)
-    
-    ci_list = display_ci_links(config_data)
+
+    ci_list = display_ci_links(config_data,job_platform)
     if isinstance(ci_list,dict):
         start_date,end_date = get_date_input()
         if start_date != None and end_date != None:
