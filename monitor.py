@@ -6,10 +6,10 @@ import urllib3
 import requests
 from datetime import datetime
 import xml.etree.ElementTree as ET
+from constants import PROW_VIEW_URL,JOB_LINK_URL
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 PROW_URL = ""
-PROW_VIEW_URL = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs"
 final_job_list=[]
 RELEASE_URL = "https://ppc64le.ocp.releases.ci.openshift.org/releasestream/4-stable-ppc64le/release/"
 
@@ -50,9 +50,9 @@ def set_prow_url(ci_job_type: str)->str:
         string: Value of PROW_URL
     '''
     if ci_job_type == 'p' or ci_job_type == 'z':
-        return "https://prow.ci.openshift.org/job-history/gs/origin-ci-test/logs/"
+        return JOB_LINK_URL+"job-history/gs/origin-ci-test/logs/"
     elif ci_job_type == 'pa':
-        return "https://prow.ci.openshift.org/job-history/gs/test-platform-results/logs/"
+        return JOB_LINK_URL+"job-history/gs/test-platform-results/logs/"
 
 def load_config(config_file):
 
@@ -1255,7 +1255,7 @@ def get_detailed_job_info(build_list,prow_ci_name,zone=None):
             builds_to_deleted.append(build)
             continue
         i=i+1
-        print(i,"Job link: https://prow.ci.openshift.org/"+build)
+        print(i,"Job link:"+JOB_LINK_URL+build)
 
         build_status = check_job_status(build)
         sensitive_info_expose_status=check_if_sensitive_info_exposed(build)
