@@ -364,6 +364,23 @@ def check_if_gather_libvirt_dir_exists(spy_link,job_type):
         return "Request timed out"
     except requests.RequestException:
         return "Error while sending request to url"
+    
+#This is to check for hypervisor error
+def check_hypervisor_error(spy_link):
+    build_log_url = constants.PROW_VIEW_URL + spy_link[8:] + '/build-log.txt'
+    try:
+        response = requests.get(build_log_url, verify=False, timeout=15)
+        hypervisor_re = re.compile(constants.HYPERVISOR_CONNECTION_ERROR)
+        hypervisor_re_match = hypervisor_re.search(response.text)
+        if hypervisor_re_match is not None:
+            return True
+        else:
+            return False
+    except requests.Timeout:
+        return "Request timed out"
+    except requests.RequestException:
+        return "Error while sending request to url"
+
 
 #This is a fix to check for sensitive information expose error.
 def check_if_sensitive_info_exposed(spy_link):
@@ -1222,6 +1239,10 @@ def get_brief_job_info(build_list,prow_ci_name,zone=None):
                         job_dict["Test result"] = str(e2e_fail_test_count) + " testcases failed"   
                 else:
                     job_dict["Test result"] = "Failed to get Test summary"
+            else:
+                hypervisor_error_status = check_hypervisor_error(build)
+                if hypervisor_error_status:
+                    job_dict["Test result"] = constants.HYPERVISOR_CONNECTION_ERROR
         summary_list.append(job_dict)
     return summary_list
 
@@ -1280,7 +1301,11 @@ def get_detailed_job_info(build_list,prow_ci_name,zone=None):
                 print("Lease Quota-", lease)    
                 node_status = get_node_status(build)
                 print(node_status)
-            check_node_crash(build)
+            hypervisor_error_status = check_hypervisor_error(build)
+            if hypervisor_error_status:
+                print("Cluster Creation Failed."+constants.HYPERVISOR_CONNECTION_ERROR)
+            else :
+                check_node_crash(build)
 
             if cluster_status == 'SUCCESS':
                 deploy_count += 1
@@ -1292,8 +1317,9 @@ def get_detailed_job_info(build_list,prow_ci_name,zone=None):
 
             elif cluster_status == 'FAILURE':
                 print("Cluster Creation Failed")
+                
 
-            elif cluster_status == 'ERROR':
+            elif cluster_status == 'ERROR' and not hypervisor_error_status :
                 print('Unable to get cluster status please check prowCI UI ')
         else:
             print(build_status)
