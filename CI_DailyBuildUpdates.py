@@ -29,6 +29,8 @@ def main():
         for ci_name,ci_link in config_data.items():
             build_list = monitor.get_jobs(ci_link)
             summary_list.extend(monitor.get_brief_job_info(build_list,ci_name,zone=args.zone))
+        if len(summary_list)==0:
+            print("******************* No builds found ******************************")
         print(tabulate(summary_list, headers='keys', tablefmt="pipe", stralign='left'))
     elif args.info_type == "detailed":
         for ci_name,ci_link in config_data.items():
