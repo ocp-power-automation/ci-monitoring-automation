@@ -10,7 +10,7 @@
     "4.16 jenkins": "periodic-ci-openshift-multiarch-master-nightly-4.16-ocp-jenkins-e2e-ovn-remote-libvirt-ppc64le",
     "4.17 jenkins": "periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-jenkins-e2e-ovn-remote-libvirt-multi-p-p",
     "4.18 jenkins": "periodic-ci-openshift-multiarch-master-nightly-4.18-ocp-jenkins-e2e-ovn-remote-libvirt-multi-p-p",
-    "4.19 jenkins": "periodic-ci-openshift-multiarch-master-nightly-4.18-ocp-jenkins-e2e-ovn-remote-libvirt-multi-p-p",
+    "4.19 jenkins": "periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-jenkins-e2e-ovn-remote-libvirt-multi-p-p",
     "4.14 fips":  "periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-fips-ovn-remote-libvirt-ppc64le",
     "4.15 fips":  "periodic-ci-openshift-multiarch-master-nightly-4.15-ocp-fips-ovn-remote-libvirt-ppc64le",
     "4.16 fips":  "periodic-ci-openshift-multiarch-master-nightly-4.16-ocp-fips-ovn-remote-libvirt-ppc64le",
