@@ -1108,7 +1108,6 @@ def get_jobs_with_date(prowci_url,start_date,end_date):
                         if end_date <= job_time <= start_date and ele["Result"] != "PENDING" :
                             job_log_path = ele["SpyglassLink"]
                             final_job_list.append(job_log_path)
-
                     #build match extracts the next page spylink
                     build_regex = r"/([^/?]+)\?.+"
                     build_match = re.search(build_regex,next_link)
@@ -1247,7 +1246,7 @@ def get_brief_job_info(build_list,prow_ci_name,zone=None):
         summary_list.append(job_dict)
     return summary_list
 
-def get_detailed_job_info(build_list,prow_ci_name,zone=None):
+def get_detailed_job_info(build_list,prow_ci_name,zone=None,fetch_one_success_job=False):
 
     """
     Prints detailed information of all the jobs.
@@ -1296,6 +1295,9 @@ def get_detailed_job_info(build_list,prow_ci_name,zone=None):
                 print("Lease Quota-", lease)
             check_node_crash(build)
             print("Build Passed")
+            if  fetch_one_success_job == True:
+                print("Found a passed job, hence ignoring subsequent jobs")
+                break
         elif build_status == 'FAILURE':
             cluster_status=cluster_deploy_status(build)
             if "sno" not in build:
