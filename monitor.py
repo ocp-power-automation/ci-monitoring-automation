@@ -17,20 +17,27 @@ def fetch_release_date(release):
     '''
     Returns the created date of release
     '''
-    url = constants.RELEASE_URL + release
+
     try:
+        url = constants.STABLE_RELEASE_URL + release
         response = requests.get(url, verify=False, timeout=15)
+        if response.status_code == 404:
+            url = constants.DEV_PREVIEW_RELEASE_URL + release
+            response = requests.get(url, verify=False, timeout=15)
+            if response.status_code == 404:
+                print(f"Failed to get the release page.  {response.text}")
+                sys.exit(1)
         if response.status_code == 200:
-             soup = BeautifulSoup(response.text, 'html.parser')
-             p_elements = soup.find_all("p")
-             for p in p_elements:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            p_elements = soup.find_all("p")
+            for p in p_elements:
                 p_ele = p.string
                 if p_ele:
                     if "Created:" in p_ele:
                         start_date = p_ele.split(" ")[1]+" "+p_ele.split(" ")[2]
                         break
-             return start_date
-        else:
+            return start_date
+        else: 
             print(f"Failed to get the release page.  {response.text}")
             sys.exit(1)
     except requests.Timeout as e:
