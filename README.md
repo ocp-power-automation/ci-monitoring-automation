@@ -80,6 +80,9 @@ Create a virtualenv if required and install required packages using "pip install
 	        •	Get Builds with Test Case Failures: Identifies builds where given test cases failed.
 	        •	Test Case Failure Frequency: Analyzes how often test cases fail.
 	        •	Get Build Based on Release: Retrieves builds corresponding to a specific release
+                    release: Provide initial release
+                    next release: provide latest release 
+                    
         before_date: End date.
         after_date: Start date.
         tc_name: Testcase name which will be used in quering the failure frequency.
