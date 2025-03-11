@@ -62,8 +62,11 @@ Create a virtualenv if required and install required packages using "pip install
 2. **CI_JobHistory.py:** The CI_JobHistory.py is a script which allows user to query a specific information from all builds that ran on the CI system within a given date range.  
     
     ```python3 CI_JobHistory.py```
+
     ```python3 CI_Jobhistory.py --zone ```     This command line allows user to fetch querry based on zone type.
+
     ```python3 CI_Jobhistory.py --job_type ``` This command line allows user to fetch querry based on job type.
+             
     ```python3 CI_Jobhistory.py --filter ```   This command line allows user to fetch querry based on search filter.
 
 
