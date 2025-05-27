@@ -522,7 +522,10 @@ def get_nightly(build_log_url,build_log_response, job_platform):
         nightly_log_re = re.compile('(Resolved release {}-latest to (\S+))'.format(job_platform), re.MULTILINE|re.DOTALL)
         nightly_log_match = nightly_log_re.search(build_log_response.text)
         if nightly_log_match is None:
-                rc_nightly_log_re = re.compile('(Using explicitly provided pull-spec for release {}-latest \((\S+)\))'.format(job_platform), re.MULTILINE|re.DOTALL)
+                if job_platform=="multi":
+                    rc_nightly_log_re = re.compile('(Resolved release latest to (\S+))'.format(job_platform), re.MULTILINE|re.DOTALL)
+                else:
+                    rc_nightly_log_re = re.compile('(Using explicitly provided pull-spec for release {}-latest \((\S+)\))'.format(job_platform), re.MULTILINE|re.DOTALL)
                 rc_nightly_log_match = rc_nightly_log_re.search(build_log_response.text)
                 if rc_nightly_log_match is None:
                     nightly = "Unable to fetch nightly information- No match found"
@@ -534,25 +537,31 @@ def get_nightly(build_log_url,build_log_response, job_platform):
         nightly_initial_log_re = re.compile('(Resolved release {}-initial to (\S+))'.format(job_platform), re.MULTILINE|re.DOTALL)
         nightly_initial_log_match = nightly_initial_log_re.search(build_log_response.text)
         if nightly_initial_log_match is None:
-            nightly_initial_log_re = re.compile('(Using explicitly provided pull-spec for release {}-initial \((\S+)\))'.format(job_platform), re.MULTILINE|re.DOTALL)
-            nightly_initial_log_match = nightly_initial_log_re.search(build_log_response.text)
+            if job_platform=="multi":
+                    rc_nightly_log_re = re.compile('(Resolved release initial to (\S+))'.format(job_platform), re.MULTILINE|re.DOTALL)
+            else:
+                    rc_nightly_log_re = re.compile('(Using explicitly provided pull-spec for release {}-latest \((\S+)\))'.format(job_platform), re.MULTILINE|re.DOTALL)
+            nightly_initial_log_match = rc_nightly_log_re.search(build_log_response.text)
             if nightly_initial_log_match is None:
                 nightly =" Unable to fetch nightly {}-initial information- No match found".format(job_platform)
             else:
-                nightly = job_platform+"-initial-"+ nightly_initial_log_match.group(2)
+                nightly = nightly_initial_log_match.group(2)
         else:
             nightly = job_platform+"-initial-"+ nightly_initial_log_match.group(2)
         nightly_latest_log_re = re.compile('(Resolved release {}-latest to (\S+))'.format(job_platform), re.MULTILINE|re.DOTALL)
         nightly_latest_log_match = nightly_latest_log_re.search(build_log_response.text)
         if nightly_latest_log_match is None:
-            nightly_latest_log_re = re.compile('(Using explicitly provided pull-spec for release {}-latest \((\S+)\))'.format(job_platform), re.MULTILINE|re.DOTALL)
-            nightly_latest_log_match = nightly_latest_log_re.search(build_log_response.text)
+            if job_platform=="multi":
+                 rc_nightly_log_re = re.compile('(Resolved release latest to (\S+))'.format(job_platform), re.MULTILINE|re.DOTALL)
+            else:
+                rc_nightly_log_re = re.compile('(Using explicitly provided pull-spec for release {}-latest \((\S+)\))'.format(job_platform), re.MULTILINE|re.DOTALL)
+            nightly_latest_log_match = rc_nightly_log_re.search(build_log_response.text)
             if nightly_latest_log_match is None:
                 nightly = nightly + " Unable to fetch nightly {}-latest information- No match found".format(job_platform)
             else:
-                nightly = nightly +" "+job_platform+"-latest-"+ nightly_latest_log_match.group(2)
+                nightly = nightly +" "+ nightly_latest_log_match.group(2)
         else:
-            nightly = nightly +" "+job_platform+"-latest-"+ nightly_latest_log_match.group(2)
+            nightly =nightly_latest_log_match.group(2)
     return nightly
 
 def get_quota_and_nightly(spy_link):
