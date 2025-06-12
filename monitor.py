@@ -532,45 +532,31 @@ def get_nightly(build_log_url,build_log_response, job_platform):
        build_log_response: build log response.
        job_platform(string): Architecture (ppc64le or s390x or multi).
     Returns:
-        nightly(string): Nighlty image used.
+        string : Nightly image used.
     '''
-    
-    if "upgrade" not in build_log_url:
-        nightly_log_re = re.compile('(Resolved release {}-latest to (\S+))'.format(job_platform), re.MULTILINE|re.DOTALL)
-        nightly_log_match = nightly_log_re.search(build_log_response.text)
-        if nightly_log_match is None:
-                rc_nightly_log_re = re.compile('(Using explicitly provided pull-spec for release {}-latest \((\S+)\))'.format(job_platform), re.MULTILINE|re.DOTALL)
-                rc_nightly_log_match = rc_nightly_log_re.search(build_log_response.text)
-                if rc_nightly_log_match is None:
-                    nightly = "Unable to fetch nightly information- No match found"
-                else:
-                    nightly = rc_nightly_log_match.group(2)
-        else:
-            nightly = job_platform+"-latest-"+ nightly_log_match.group(2)
-    else:
-        nightly_initial_log_re = re.compile('(Resolved release {}-initial to (\S+))'.format(job_platform), re.MULTILINE|re.DOTALL)
-        nightly_initial_log_match = nightly_initial_log_re.search(build_log_response.text)
-        if nightly_initial_log_match is None:
-            nightly_initial_log_re = re.compile('(Using explicitly provided pull-spec for release {}-initial \((\S+)\))'.format(job_platform), re.MULTILINE|re.DOTALL)
-            nightly_initial_log_match = nightly_initial_log_re.search(build_log_response.text)
-            if nightly_initial_log_match is None:
-                nightly =" Unable to fetch nightly {}-initial information- No match found".format(job_platform)
-            else:
-                nightly = job_platform+"-initial-"+ nightly_initial_log_match.group(2)
-        else:
-            nightly = job_platform+"-initial-"+ nightly_initial_log_match.group(2)
-        nightly_latest_log_re = re.compile('(Resolved release {}-latest to (\S+))'.format(job_platform), re.MULTILINE|re.DOTALL)
-        nightly_latest_log_match = nightly_latest_log_re.search(build_log_response.text)
-        if nightly_latest_log_match is None:
-            nightly_latest_log_re = re.compile('(Using explicitly provided pull-spec for release {}-latest \((\S+)\))'.format(job_platform), re.MULTILINE|re.DOTALL)
-            nightly_latest_log_match = nightly_latest_log_re.search(build_log_response.text)
-            if nightly_latest_log_match is None:
-                nightly = nightly + " Unable to fetch nightly {}-latest information- No match found".format(job_platform)
-            else:
-                nightly = nightly +" "+job_platform+"-latest-"+ nightly_latest_log_match.group(2)
-        else:
-            nightly = nightly +" "+job_platform+"-latest-"+ nightly_latest_log_match.group(2)
-    return nightly
+    phases = ["initial", "latest"] if "upgrade" in build_log_url else ["latest"]
+    results = []
+
+    for phase in phases:
+        patterns = [
+            rf"Resolved release {job_platform}-{phase} to (\S+)",
+            rf"Using explicitly provided pull-spec for release {job_platform}-{phase} \((\S+)\)"] if job_platform != "multi" else[
+            rf"Resolved release {phase} to (\S+)",
+            rf"Using explicitly provided pull-spec for release {phase} \((\S+)\)"
+        ]
+
+        found = False
+        for pattern in patterns:
+            match = re.search(pattern, build_log_response.text, re.MULTILINE | re.DOTALL)
+            if match:
+                results.append(match.group(1))
+                found = True
+                break
+
+        if not found:
+            results.append(f"Unable to fetch nightly {job_platform}-{phase} information - No match found")
+
+    return "\n".join(results)
 
 def get_quota_and_nightly(spy_link):
 
