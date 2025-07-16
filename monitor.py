@@ -36,6 +36,18 @@ def fetch_release_date(release):
                     if "Created:" in p_ele:
                         start_date = p_ele.split(" ")[1]+" "+p_ele.split(" ")[2]
                         break
+                    else:
+                        prefix, number = release.rsplit(".", 1)
+                        prev_version = prefix + "." + str(int(number) - 1)
+                        changelog_url = f"https://ppc64le.ocp.releases.ci.openshift.org/changelog?from={prev_version}&to={release}"
+                        changelog_resp = requests.get(changelog_url, verify=False, timeout=15)
+                        if changelog_resp.status_code == 200:
+                            lines = changelog_resp.text.splitlines()
+                            for line in lines:
+                                if "Created:" in line:
+                                    start_date = line.split(" ")[1]+" "+line.split(" ")[2]
+                                    return start_date
+                    
             return start_date
         else: 
             print(f"Failed to get the release page.  {response.text}")
