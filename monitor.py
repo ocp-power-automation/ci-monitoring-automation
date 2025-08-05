@@ -35,20 +35,24 @@ def fetch_release_date(release):
                 if p_ele:
                     if "Created:" in p_ele:
                         start_date = p_ele.split(" ")[1]+" "+p_ele.split(" ")[2]
-                        break
-                    else:
-                        prefix, number = release.rsplit(".", 1)
-                        prev_version = prefix + "." + str(int(number) - 1)
-                        changelog_url = f"https://ppc64le.ocp.releases.ci.openshift.org/changelog?from={prev_version}&to={release}"
-                        changelog_resp = requests.get(changelog_url, verify=False, timeout=15)
-                        if changelog_resp.status_code == 200:
-                            lines = changelog_resp.text.splitlines()
-                            for line in lines:
-                                if "Created:" in line:
-                                    start_date = line.split(" ")[1]+" "+line.split(" ")[2]
+                        return start_date
+            form = soup.find("form", {"method": "GET"})
+            if form:
+                a_tag = form.find("a", href=True)
+                if a_tag and "changelog" in a_tag["href"]:
+                    changelog_url = constants.RELEASE_BASE_URL + a_tag["href"]
+                    changelog_resp = requests.get(changelog_url, verify=False, timeout=15)
+                    if changelog_resp.status_code == 200:
+                        lines = changelog_resp.text.splitlines()
+                        for line in lines:
+                            if "Created:" in line:
+                                parts = line.split()
+                                if len(parts) >= 3:
+                                    start_date = parts[1] + " " + parts[2]
                                     return start_date
-                    
-            return start_date
+                    else:
+                        print(f"Failed to get the changelog page.")
+                        sys.exit(1)
         else: 
             print(f"Failed to get the release page.  {response.text}")
             sys.exit(1)
