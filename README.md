@@ -52,6 +52,10 @@ Create a virtualenv if required and install required packages using "pip install
     4. The CI_DailyBuildUpdates.py script when invoked with command line arguments info_type as "detailed" and zone, it will display the builds details in the provided zone.
 
         ```python3 CI_DailyBuildUpdates.py --info_type detailed --zone syd04```
+    
+    5. The CI_DailyBuildUpdates.py script when invoked with command line arguments info_type as "detailed" and --job_type as "pa", it will display the builds details in the given job type.
+         
+         ```python3 CI_DailyBuildUpdates.py --info_type detailed --job_type pa```
 
 
 
@@ -59,14 +63,31 @@ Create a virtualenv if required and install required packages using "pip install
     
     ```python3 CI_JobHistory.py```
 
+    ```python3 CI_Jobhistory.py --zone ```     This command line allows user to fetch querry based on zone type.
+
+    ```python3 CI_Jobhistory.py --job_type ``` This command line allows user to fetch querry based on job type.
+             
+    ```python3 CI_Jobhistory.py --filter ```   This command line allows user to fetch querry based on search filter.
+
+
     1. Interactive Execution: The CI_JobHistory.py can be executed in a interactive mode by setting JENKINS variable as False in config.ini file.
 
     2. Non-Interactive Execution: The CI_JobHistory.py can be executed in a non-interactive mode by setting JENKINS variable as True in config.ini file, along with the JENKINS variable user needs to provide values for the following variables:
         ```
         selected_ci: CI's from where to fetch the jobs.
+        query_option: Query code to fetch information from builds.
+            •	Check Node Crash: Detects if a node crashed during execution.
+	        •	Brief Job Information: Provides a summary of job execution.
+	        •	Detailed Job Information: Fetches in-depth details of jobs.
+	        •	Failed Test Cases: Lists test cases that failed in the CI run.
+	        •	Get Builds with Test Case Failures: Identifies builds where given test cases failed.
+	        •	Test Case Failure Frequency: Analyzes how often test cases fail.
+	        •	Get Build Based on Release: Retrieves builds corresponding to a specific release
+                    release: Provide initial release
+                    next release: provide latest release 
+                    
         before_date: End date.
         after_date: Start date.
-        query_option: Query code to fetch information from builds.
         tc_name: Testcase name which will be used in quering the failure frequency.
         ```
 
