@@ -29,6 +29,7 @@ def fetch_release_date(release):
                 sys.exit(1)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
+            forms = soup.find_all("form", {"method": "GET"})
             p_elements = soup.find_all("p")
             for p in p_elements:
                 p_ele = p.string
@@ -36,8 +37,7 @@ def fetch_release_date(release):
                     if "Created:" in p_ele:
                         start_date = p_ele.split(" ")[1]+" "+p_ele.split(" ")[2]
                         return start_date
-            form = soup.find("form", {"method": "GET"})
-            if form:
+            for form in forms:
                 a_tag = form.find("a", href=True)
                 if a_tag and "changelog" in a_tag["href"]:
                     changelog_url = constants.RELEASE_BASE_URL + a_tag["href"]
@@ -46,10 +46,8 @@ def fetch_release_date(release):
                         lines = changelog_resp.text.splitlines()
                         for line in lines:
                             if "Created:" in line:
-                                parts = line.split()
-                                if len(parts) >= 3:
-                                    start_date = parts[1] + " " + parts[2]
-                                    return start_date
+                                start_date = line.split(" ")[1]+" "+line.split(" ")[2]
+                                return start_date
                     else:
                         print(f"Failed to get the changelog page.")
                         sys.exit(1)
