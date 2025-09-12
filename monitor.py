@@ -578,7 +578,7 @@ def get_quota_and_nightly(spy_link):
         build_log_response = requests.get(build_log_url, verify=False, timeout=15)
         if 'ppc64le' in spy_link:      
             if job_platform == "libvirt":
-                job_platform+="-ppc64le"
+                job_platform+="-ppc64le-s2s"
             elif job_platform == "powervs":
                 job_platform+="-[1-9]"
             lease = get_lease(build_log_response,job_platform)
@@ -595,7 +595,7 @@ def get_quota_and_nightly(spy_link):
                 lease=get_lease(build_log_response,job_platform)
             else:
                 job_platform="multi"
-                lease=get_lease(build_log_response,'libvirt-ppc64le')
+                lease=get_lease(build_log_response,'libvirt-ppc64le-s2s')
             nightly = get_nightly(build_log_url,build_log_response, "multi") 
 
         elif "mce" in spy_link:
