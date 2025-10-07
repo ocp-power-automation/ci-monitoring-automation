@@ -4,6 +4,7 @@ import sys
 from bs4 import BeautifulSoup
 import urllib3
 import requests
+import time
 from datetime import datetime , timedelta
 import xml.etree.ElementTree as ET
 import constants
@@ -572,44 +573,54 @@ def get_quota_and_nightly(spy_link):
     '''
 
     _,job_platform = job_classifier(spy_link)
-    lease = ""
+    lease = None
+    nightly = None
+    max_retries = 3
+    delay = 5  # seconds
     build_log_url = constants.PROW_VIEW_URL + spy_link[8:] + "/build-log.txt"
-    try:
-        build_log_response = requests.get(build_log_url, verify=False, timeout=15)
-        if 'ppc64le' in spy_link:      
-            if job_platform == "libvirt":
-                job_platform+="-ppc64le-s2s"
-            elif job_platform == "powervs":
-                job_platform+="-[1-9]"
-            lease = get_lease(build_log_response,job_platform)
-            nightly = get_nightly(build_log_url,build_log_response, 'ppc64le')
+    for attempt in range(1, max_retries + 1):
+        try:
+            build_log_response = requests.get(build_log_url, verify=False, timeout=15)
+            if 'ppc64le' in spy_link:      
+                if job_platform == "libvirt":
+                    job_platform += "-ppc64le-s2s"
+                elif job_platform == "powervs":
+                    job_platform += "-[1-9]"
+                lease = get_lease(build_log_response, job_platform)
+                nightly = get_nightly(build_log_url, build_log_response, 'ppc64le')
 
-        elif 's390x' in spy_link:     
-            job_platform+="-s390x"
-            lease = get_lease(build_log_response,job_platform )
-            nightly = get_nightly(build_log_url,build_log_response, 's390x')
-        elif "multi" in spy_link:
-            if "powervs" in spy_link:
-                job_platform = "powervs"
-                job_platform+="-[1-9]"
-                lease=get_lease(build_log_response,job_platform)
+            elif 's390x' in spy_link:     
+                job_platform += "-s390x"
+                lease = get_lease(build_log_response, job_platform)
+                nightly = get_nightly(build_log_url, build_log_response, 's390x')
+
+            elif "multi" in spy_link:
+                if "powervs" in spy_link:
+                    job_platform = "powervs-[1-9]"
+                    lease = get_lease(build_log_response, job_platform)
+                else:
+                    job_platform = "multi"
+                    lease = get_lease(build_log_response, 'libvirt-ppc64le-s2s')
+                nightly = get_nightly(build_log_url, build_log_response, "multi") 
+
+            elif "mce" in spy_link:
+                job_platform = "aws"
+                lease = get_lease(build_log_response, job_platform)
+                nightly = get_nightly(build_log_url, build_log_response, "multi")
+
             else:
-                job_platform="multi"
-                lease=get_lease(build_log_response,'libvirt-ppc64le-s2s')
-            nightly = get_nightly(build_log_url,build_log_response, "multi") 
+                # lease is not applicable for SNO
+                nightly = get_nightly(build_log_url, build_log_response, "multi")
 
-        elif "mce" in spy_link:
-            job_platform = "aws"
-            lease = get_lease(build_log_response,job_platform )
-            nightly = get_nightly(build_log_url,build_log_response, "multi")
-        else:
-            # lease is not applicable for SNO
-            nightly = get_nightly(build_log_url,build_log_response, "multi")    
-        return lease, nightly
-    except requests.Timeout:
-        return "Request timed out"
-    except requests.RequestException:
-        return "Error while sending request to url"
+            break  # If successful, break out of retry loop
+
+        except (requests.Timeout, requests.RequestException) as e:
+            if attempt == max_retries - 1:
+                print(f"Request failed after {max_retries} attempts: {e}")
+            else:
+                time.sleep(delay)
+
+    return lease, nightly
 
 def job_classifier(spy_link):
 
