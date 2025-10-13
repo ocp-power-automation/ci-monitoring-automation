@@ -52,6 +52,18 @@ Create a virtualenv if required and install required packages using "pip install
     4. The CI_DailyBuildUpdates.py script when invoked with command line arguments info_type as "detailed" and zone, it will display the builds details in the provided zone.
 
         ```python3 CI_DailyBuildUpdates.py --info_type detailed --zone syd04```
+    
+    5. The CI_DailyBuildUpdates.py script when invoked with command line arguments info_type as "detailed" and --job_type as "pa", it will display the builds details in the given job type.
+
+        Supported value [p','z','pa'] 
+
+        pa - ppc64le architecture auxilliary jobs
+
+        p - ppc64le architecture periodic jobs
+        
+        z - s390x architecture periodic jobs
+         
+         ```python3 CI_DailyBuildUpdates.py --info_type detailed --job_type pa```
 
 
 
@@ -59,14 +71,33 @@ Create a virtualenv if required and install required packages using "pip install
     
     ```python3 CI_JobHistory.py```
 
+    ```python3 CI_Jobhistory.py --zone ```     This command line allows user to fetch query based on zone type.
+
+    ```python3 CI_Jobhistory.py --job_type ``` This command line allows user to fetch query based on job type.
+             
+    ```python3 CI_Jobhistory.py --filter ```   This command line allows user to fetch query based on search filter.
+        Specify the filter string to fetch jobs (Example 'heavy build' / libvirt / powervs / upgrade /multi / 4.14 / 4.15 / 4.16 / 4.17/ 4.18 )'
+
+
+
     1. Interactive Execution: The CI_JobHistory.py can be executed in a interactive mode by setting JENKINS variable as False in config.ini file.
 
     2. Non-Interactive Execution: The CI_JobHistory.py can be executed in a non-interactive mode by setting JENKINS variable as True in config.ini file, along with the JENKINS variable user needs to provide values for the following variables:
         ```
         selected_ci: CI's from where to fetch the jobs.
+        query_option: Query code to fetch information from builds.
+            •	Check Node Crash: Detects if a node crashed during execution.
+	        •	Brief Job Information: Provides a summary of job execution.
+	        •	Detailed Job Information: Provides in-depth details of jobs.
+	        •	Failed Test Cases: Provides a list of test cases that are failed in the CI run.
+	        •	Get Builds with Test Case Failures: Identifies builds where given test cases failed.
+	        •	Test Case Failure Frequency: Analyzes how often test cases fail.
+	        •	Get Build Based on Release: Retrieves builds corresponding to a specific release
+                    release: release that needs to be checked
+                    next release: next release or latest
+                    
         before_date: End date.
         after_date: Start date.
-        query_option: Query code to fetch information from builds.
         tc_name: Testcase name which will be used in quering the failure frequency.
         ```
 
