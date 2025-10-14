@@ -530,7 +530,7 @@ def get_lease(build_log_response,job_platform):
     '''
 
     lease = ""
-    zone_log_re = re.compile('(Acquired 1 lease\(s\) for {}-quota-slice: \[)([^]]+)(\])'.format(job_platform), re.MULTILINE|re.DOTALL)
+    zone_log_re = re.compile(r'(Acquired 1 lease\(s\) for {}-quota-slice: \[)([^]]+)(\])'.format(job_platform), re.MULTILINE|re.DOTALL)
     zone_log_match = zone_log_re.search(build_log_response.text)
     if zone_log_match is None:
         lease = "Failed to fetch lease information"
@@ -698,7 +698,7 @@ def get_failed_monitor_testcases(spy_link,job_type):
         response = requests.get(test_log_junit_dir_url, verify=False, timeout=15)
 
         if response.status_code == 200:
-            monitor_test_failure_summary_filename_re = re.compile('(test-failures-summary_monitor_2[^.]*\.json)')
+            monitor_test_failure_summary_filename_re = re.compile(r'(test-failures-summary_monitor_2[^.]*\.json)')
             monitor_test_failure_summary_filename_match = monitor_test_failure_summary_filename_re.search(response.text, re.MULTILINE|re.DOTALL)
         
             if monitor_test_failure_summary_filename_match is not None:
@@ -748,7 +748,7 @@ def get_failed_monitor_testcases_from_xml(spy_link,job_type):
         response = requests.get(test_log_junit_dir_url, verify=False, timeout=15)
 
         if response.status_code == 200:
-            test_failure_summary_filename_re = re.compile('(e2e-monitor-tests__2[^.]*\.xml)')
+            test_failure_summary_filename_re = re.compile(r'(e2e-monitor-tests__2[^.]*\.xml)')
             test_failure_summary_filename_match = test_failure_summary_filename_re.search(response.text, re.MULTILINE|re.DOTALL)
         
             if test_failure_summary_filename_match is not None:
@@ -841,7 +841,7 @@ def get_failed_e2e_testcases(spy_link,job_type):
         response = requests.get(test_log_junit_dir_url, verify=False, timeout=15)
 
         if response.status_code == 200:
-            test_failure_summary_filename_re = re.compile('(test-failures-summary_2[^.]*\.json)')
+            test_failure_summary_filename_re = re.compile(r'(test-failures-summary_2[^.]*\.json)')
             test_failure_summary_filename_match = test_failure_summary_filename_re.search(response.text, re.MULTILINE|re.DOTALL)
         
             if test_failure_summary_filename_match is not None:
@@ -1222,7 +1222,7 @@ def get_next_page_first_build_date(ci_next_page_spylink,end_date):
         print("Failed to extract the spy-links from spylink please check the UI!")
         return "ERROR"
     
-def get_brief_job_info(build_list,prow_ci_name,zone=None):
+def get_brief_job_info(build_list,prow_ci_name,zone=None,job_filter='All'):
 
     """
     Gets brief information of all the jobs
@@ -1247,6 +1247,11 @@ def get_brief_job_info(build_list,prow_ci_name,zone=None):
     for build in build_list:
         match = re.search(pattern_build_id, build)
         build_id = match.group(1)
+        cluster_status = cluster_deploy_status(build)
+        if job_filter == "success" and (cluster_status == "FAILURE" or cluster_status =="ERROR"):
+                continue
+        elif job_filter == "failure" and cluster_status =='SUCCESS':
+                continue
         try:
             url = constants.PROW_VIEW_URL + build[8:] + '/prowjob.json'
             time=fetch_build_time(url)
@@ -1291,93 +1296,100 @@ def get_brief_job_info(build_list,prow_ci_name,zone=None):
         summary_list.append(job_dict)
     return summary_list
 
-def get_detailed_job_info(build_list,prow_ci_name,zone=None):
-
+def get_detailed_job_info(build_list, prow_ci_name, zone=None, job_filter="all"):
     """
     Prints detailed information of all the jobs.
 
     Args:
         build_list: list of builds
         prow_ci_name: CI name
-        zone(string, optional): Cluster deployment zone
+        zone (string, optional): Cluster deployment zone
+        install_status_filter (string, optional): 'all' (default), 'success', or 'failure'
+            - 'failure' → show only cluster installs that failed or error
+            - 'success' → show only cluster installs that 
+            - 'all'     → show all builds
+
     """    
 
-    if isinstance(build_list,str):
+    if isinstance(build_list, str):
         print(build_list)
         return 1
-    
-    if len(build_list) > 0: 
-        print("--------------------------------------------------------------------------------------------------")
-        print(prow_ci_name)
         
     deploy_count = 0
     e2e_count = 0
-    i=0
+    i = 0
 
     builds_to_deleted = []
     for build in build_list:
         lease, nightly = get_quota_and_nightly(build)
+        cluster_status = cluster_deploy_status(build)
+        if job_filter == "success" and (cluster_status == "FAILURE" or cluster_status =="ERROR"):
+                continue
+        elif job_filter == "failure" and cluster_status =='SUCCESS':
+                continue
+        print("--------------------------------------------------------------------------------------------------")
+        print(prow_ci_name)
         if zone is not None and lease not in zone:
             builds_to_deleted.append(build)
             continue
-        i=i+1
-        print(i,"Job link:"+constants.JOB_LINK_URL+build)
+        i += 1
+        print(i, "Job link:" + constants.JOB_LINK_URL + build)
         try:
             url = constants.PROW_VIEW_URL + build[8:] + '/prowjob.json'
-            time=fetch_build_time(url)
+            time = fetch_build_time(url)
             print("Build start time:", time)
         except (requests.exceptions.RequestException, KeyError, ValueError) as e:
             print("Error fetching build time:", e)
-        build_status = check_job_status(build)
-        sensitive_info_expose_status=check_if_sensitive_info_exposed(build)
         
-        if sensitive_info_expose_status == True:
+        build_status = check_job_status(build)
+        sensitive_info_expose_status = check_if_sensitive_info_exposed(build)
+        
+        if sensitive_info_expose_status:
             print("*********************************")
             print("Build log removed")
             print("*********************************")
 
         print("Nightly info-", nightly)
-        
         if build_status == 'SUCCESS':
+
             deploy_count += 1
-            e2e_count=e2e_count+1
+            e2e_count += 1
             if "sno" not in build:
                 print("Lease Quota-", lease)
             check_node_crash(build)
             print("Build Passed")
+
         elif build_status == 'FAILURE':
-            cluster_status=cluster_deploy_status(build)
             if "sno" not in build:
                 print("Lease Quota-", lease)    
                 node_status = get_node_status(build)
                 print(node_status)
             hypervisor_error_status = check_hypervisor_error(build)
             if hypervisor_error_status:
-                print("Cluster Creation Failed."+constants.HYPERVISOR_CONNECTION_ERROR)
-            else :
+                print("Cluster Creation Failed." + constants.HYPERVISOR_CONNECTION_ERROR)
+            else:
                 check_node_crash(build)
 
             if cluster_status == 'SUCCESS':
                 deploy_count += 1
                 if "sno" not in prow_ci_name:
-                    job_type,_ = job_classifier(build)
-                    tc_exe_status=print_all_failed_tc(build,job_type)
-                    if tc_exe_status=="SUCCESS":
-                        e2e_count=e2e_count+1
+                    job_type, _ = job_classifier(build)
+                    tc_exe_status = print_all_failed_tc(build, job_type)
+                    if tc_exe_status == "SUCCESS":
+                        e2e_count += 1
 
             elif cluster_status == 'FAILURE':
                 print("Cluster Creation Failed")
-                
 
-            elif cluster_status == 'ERROR' and not hypervisor_error_status :
+            elif cluster_status == 'ERROR' and not hypervisor_error_status:
                 print('Unable to get cluster status please check prowCI UI ')
         else:
             print(build_status)
 
         print("\n")
-        
+
     build_list = list(set(build_list) - set(builds_to_deleted))
-    if len(build_list) != 0:
+    if len(build_list) != 0 and i!=0:
         print ("\n{}/{} deploys succeeded".format(deploy_count, len(build_list)))
         print ("{}/{} e2e tests succeeded".format(e2e_count, len(build_list)))
         print("--------------------------------------------------------------------------------------------------")

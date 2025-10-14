@@ -316,6 +316,7 @@ def main():
     parser.add_argument('--zone', help='specify the lease/zone', type= lambda arg:arg.split(','))
     parser.add_argument('--job_type', default='p', choices=['p','z','pa'], help= 'Specify the CI job type (Power(p) or s390x(z) or Power Auxillary(pa)), default is p')
     parser.add_argument('--filter',default='All',type= lambda arg:arg.split(','), help='Specify the filter string to fetch jobs (Example heavy build / libvirt / powervs / upgrade / 4.14 / 4.15 / 4.16 / 4.17/ 4.18 )')
+    parser.add_argument('--job_install_status',default='All',choices=['failure','success'],help='Specify the desired job install status to filter the jobs accordingly')
     args = parser.parse_args()
     filter=args.filter
 
@@ -325,6 +326,13 @@ def main():
         config_file = 'z_periodic.json'
     elif args.job_type == 'pa':
         config_file = 'p_auxillary.json'
+
+    if args.job_install_status == 'failure':
+        job_install_status = 'failure'
+    elif args.job_install_status == 'success':
+        job_install_status ='success'
+    else:
+        job_install_status='All'
     
     monitor.PROW_URL = monitor.set_prow_url(args.job_type)
     config_data = monitor.load_config(config_file)
@@ -356,14 +364,14 @@ def main():
                 summary_list = []
                 for ci_name,ci_link in ci_list.items():
                     spy_links = monitor.get_jobs_with_date(ci_link,start_date,end_date)
-                    summary_list.extend(monitor.get_brief_job_info(spy_links,ci_name,zone=args.zone))
+                    summary_list.extend(monitor.get_brief_job_info(spy_links,ci_name,zone=args.zone,job_filter=job_install_status))
                     monitor.final_job_list = []
                 print(tabulate(summary_list, headers='keys', tablefmt="pipe", stralign='left'))
             
             if option == '3':
                 for ci_name,ci_link in ci_list.items():
                     spy_links = monitor.get_jobs_with_date(ci_link,start_date,end_date)
-                    monitor.get_detailed_job_info(spy_links,ci_name,zone=args.zone)
+                    monitor.get_detailed_job_info(spy_links,ci_name,zone=args.zone,job_filter=job_install_status)
                     monitor.final_job_list = []
             
             if option == '4':
