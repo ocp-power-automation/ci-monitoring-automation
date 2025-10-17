@@ -236,6 +236,28 @@ def display_ci_links(config_data,filter):
     return selected_config_data
 
 def get_query_options():
+
+    """
+    Displays or retrieves the user-selected query option for job history functionalities.
+
+    Behavior:
+        - If running in a non-Jenkins environment (JENKINS == "False"):
+            Prompts the user to select one of the available job history options:
+                1. Check Node Crash
+                2. Brief Job Information
+                3. Detailed Job Information
+                4. Failed Testcases
+                5. Get Builds with Testcase Failure
+                6. Get Testcase Failure Frequency
+                7. Get Build Based on Release
+            Returns the user's selected option.
+        
+        - If running in a Jenkins environment (JENKINS == "True"):
+            Reads the preconfigured option from the Jenkins configuration (config_vars).
+
+    Returns:
+        str: The selected option (as input or configuration value).
+    """
     if JENKINS == "False":
         print("Please select one of the option from Job History functionalities: ")
         print("1. Check Node Crash")
@@ -253,6 +275,24 @@ def get_query_options():
     return option
 
 def get_testcase_names():
+
+    """
+    Retrieves a list of testcase names either from user input or from Jenkins configuration.
+
+    Behavior:
+        - If running in a non-Jenkins environment (JENKINS == "False"):
+            Prompts the user to manually enter testcase names separated by commas.
+            Example: test_case_1,test_case_2,test_case_3
+            Returns a list of those testcase names.
+
+        - If running in a Jenkins environment (JENKINS == "True"):
+            Reads the testcase names from the Jenkins configuration variable
+            (under the 'Settings' section, key 'tc_name') and splits them into a list.
+
+    Returns:
+        list[str] | None: 
+            A list of testcase names.
+    """
     tc_list=[]
     if JENKINS == "False":
         tc_name = input("Enter the testcase names comma seperated: ")
