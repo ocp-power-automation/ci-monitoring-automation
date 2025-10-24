@@ -316,6 +316,7 @@ def main():
     parser.add_argument('--zone', help='specify the lease/zone', type= lambda arg:arg.split(','))
     parser.add_argument('--job_type', default='p', choices=['p','z','pa'], help= 'Specify the CI job type (Power(p) or s390x(z) or Power Auxillary(pa)), default is p')
     parser.add_argument('--filter',default='All',type= lambda arg:arg.split(','), help='Specify the filter string to fetch jobs (Example heavy build / libvirt / powervs / upgrade / 4.14 / 4.15 / 4.16 / 4.17/ 4.18 )')
+    parser.add_argument('--fetch_one_success_job',action='store_true', help='Set this flag to check job runs until one success job is found')
     args = parser.parse_args()
     filter=args.filter
 
@@ -412,7 +413,7 @@ def main():
             if option == '7':
                 for ci_name,ci_link in ci_list.items():
                     spy_links = monitor.get_jobs_with_date(ci_link,start_date,end_date)
-                    monitor.get_detailed_job_info(spy_links,ci_name,zone=args.zone)
+                    monitor.get_detailed_job_info(spy_links,ci_name,zone=args.zone,fetch_one_success_job=args.fetch_one_success_job)
                     monitor.final_job_list = []
 
 if __name__ == "__main__":
