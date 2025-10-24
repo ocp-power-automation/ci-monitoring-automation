@@ -3,7 +3,7 @@ import urllib3
 from tabulate import tabulate
 import re
 from datetime import datetime,timedelta
-import monitor
+import monitor_compact as monitor
 import argparse
 import configparser
 
