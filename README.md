@@ -88,14 +88,16 @@ Create a virtualenv if required and install required packages using "pip install
         query_option: Query code to fetch information from builds.
             •	Check Node Crash: Detects if a node crashed during execution.
 	        •	Brief Job Information: Provides a summary of job execution.
-	        •	Detailed Job Information: Provides in-depth details of jobs.
+	        •	Detailed Job Information: Provides in-depth details of jobs based on job_filter.
+                job_filter: 'all' (default), 'success', or 'failure'
+                - 'success' → show only cluster installs that succeeded
+                - 'failure' → show only cluster installs that failed or errored
 	        •	Failed Test Cases: Provides a list of test cases that are failed in the CI run.
 	        •	Get Builds with Test Case Failures: Identifies builds where given test cases failed.
 	        •	Test Case Failure Frequency: Analyzes how often test cases fail.
 	        •	Get Build Based on Release: Retrieves builds corresponding to a specific release
                     release: release that needs to be checked
-                    next release: next release or latest
-                    
+                    next release: next release or latest                    
         before_date: End date.
         after_date: Start date.
         tc_name: Testcase name which will be used in quering the failure frequency.
