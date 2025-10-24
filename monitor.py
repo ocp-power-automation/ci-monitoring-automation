@@ -1257,7 +1257,11 @@ def get_brief_job_info(build_list,prow_ci_name,zone=None):
             continue
         build_status = check_job_status(build)
         cluster_status=cluster_deploy_status(build)
-        sensitive_info_expose_status=check_if_sensitive_info_exposed(build)
+        try:
+            sensitive_info_expose_status = check_if_sensitive_info_exposed(build)
+        except RuntimeError as e:
+            print(f"Warning: Could not check sensitive info exposure: {e}")
+            sensitive_info_expose_status = False
         i=i+1
         job_dict = {}
         job_dict["Job"] = prow_ci_name
@@ -1329,7 +1333,11 @@ def get_detailed_job_info(build_list,prow_ci_name,zone=None):
         except (requests.exceptions.RequestException, KeyError, ValueError) as e:
             print("Error fetching build time:", e)
         build_status = check_job_status(build)
-        sensitive_info_expose_status=check_if_sensitive_info_exposed(build)
+        try:
+            sensitive_info_expose_status = check_if_sensitive_info_exposed(build)
+        except RuntimeError as e:
+            print(f"Warning: Could not check sensitive info exposure: {e}")
+            sensitive_info_expose_status = False  # or decide what default behavior you want
         
         if sensitive_info_expose_status == True:
             print("*********************************")
