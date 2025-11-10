@@ -13,6 +13,23 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 PROW_URL = ""
 final_job_list=[]
 
+def request_url(url, verify=False, timeout=15):
+
+    retries=3
+    delay=2
+    for attempt in range(1, retries + 1):
+        try:
+            response = requests.get(url, verify=False, timeout=15)
+            response.raise_for_status()  
+            return response  # Success 
+        except (requests.RequestException, requests.Timeout) as e:
+            print(f"Attempt {attempt} failed: {e}")
+            if attempt < retries:
+                print(f"Retrying in {delay} seconds...")
+                time.sleep(delay)
+            else:
+                print("Max retries reached. Request failed.")
+                raise  
 
 def fetch_release_date(release):
     '''
@@ -21,10 +38,10 @@ def fetch_release_date(release):
 
     try:
         url = constants.STABLE_RELEASE_URL + release
-        response = requests.get(url, verify=False, timeout=15)
+        response = request_url(url, verify=False, timeout=15)
         if response.status_code == 404:
             url = constants.DEV_PREVIEW_RELEASE_URL + release
-            response = requests.get(url, verify=False, timeout=15)
+            response = request_url(url, verify=False, timeout=15)
             if response.status_code == 404:
                 print(f"Failed to get the release page.  {response.text}")
                 sys.exit(1)
@@ -42,7 +59,7 @@ def fetch_release_date(release):
                 a_tag = form.find("a", href=True)
                 if a_tag and "changelog" in a_tag["href"]:
                     changelog_url = constants.RELEASE_BASE_URL + a_tag["href"]
-                    changelog_resp = requests.get(changelog_url, verify=False, timeout=15)
+                    changelog_resp = request_url(changelog_url, verify=False, timeout=15)
                     if changelog_resp.status_code == 200:
                         lines = changelog_resp.text.splitlines()
                         for line in lines:
@@ -66,7 +83,7 @@ def fetch_build_time(url):
     '''
     Returns the created time (HH:MM) and date (YYYY-MM-DD) of the release in IST
     '''
-    response = requests.get(url, verify=False, timeout=15)
+    response = request_url(url, verify=False, timeout=15)
     response.raise_for_status()
     buildtime = json.loads(response.text)
     timestamp_str = buildtime["metadata"]["creationTimestamp"]    
@@ -147,7 +164,7 @@ def get_jobs(prow_link):
     url = PROW_URL + prow_link
 
     try:
-        response = requests.get(url, verify=False, timeout=15)
+        response = request_url(url, verify=False, timeout=15)
     
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -203,7 +220,7 @@ def get_n_recent_jobs(prow_link,n):
     url = PROW_URL + prow_link
 
     try:
-        response = requests.get(url, verify=False, timeout=15)
+        response = request_url(url, verify=False, timeout=15)
     
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -252,7 +269,7 @@ def check_job_status(spy_link):
     '''
     job_status_url = constants.PROW_VIEW_URL + spy_link[8:] + '/finished.json'
     try:
-        response = requests.get(job_status_url, verify=False, timeout=15)
+        response = request_url(job_status_url, verify=False, timeout=15)
         if response.status_code == 200:
             cluster_status = json.loads(response.text)
             return cluster_status["result"]
@@ -282,14 +299,14 @@ def cluster_deploy_status(spy_link):
         mce_install_log_url = constants.PROW_VIEW_URL + spy_link[8:] + '/artifacts/' + job_type + '/hypershift-mce-install/finished.json'
 
         try:
-            response = requests.get(mce_install_log_url, verify=False, timeout=15)
+            response = request_url(mce_install_log_url, verify=False, timeout=15)
             if response.status_code == 200:                
                 cluster_status = json.loads(response.text)
                 cluster_result = "MCE-INSTALL "+ cluster_status["result"]
                 if cluster_status["result"] == "SUCCESS":
                         # check mce-power-create status also
                     mce_power_log_url = constants.PROW_VIEW_URL + spy_link[8:] + '/artifacts/' + job_type + '/hypershift-mce-power-create-nodepool/finished.json'
-                    response = requests.get(mce_power_log_url, verify=False, timeout=15)
+                    response = request_url(mce_power_log_url, verify=False, timeout=15)
                     if response.status_code == 200:
                         cluster_status = json.loads(response.text)
                         cluster_result += "\nMCE-POWER-CREATE "+ cluster_status["result"]
@@ -321,7 +338,7 @@ def cluster_deploy_status(spy_link):
             job_log_url = constants.PROW_VIEW_URL + spy_link[8:] + '/artifacts/' + job_type + '/upi-install-' + job_platform +'/finished.json'
 
         try:
-            response = requests.get(job_log_url, verify=False, timeout=15)
+            response = request_url(job_log_url, verify=False, timeout=15)
             if response.status_code == 200:
                 
                 cluster_status = json.loads(response.text)
@@ -348,7 +365,7 @@ def cluster_creation_error_analysis(spylink):
     job_log_url = constants.PROW_VIEW_URL + spylink[8:] + '/artifacts/' + job_type + '/ipi-install-' + job_platform +'-install/build-log.txt'
     
     try:
-        response = requests.get(job_log_url,verify=False)
+        response = request_url(job_log_url,verify=False)
 
         if response.status_code == 200:
 
@@ -392,7 +409,7 @@ def check_if_gather_libvirt_dir_exists(spy_link,job_type):
     base_artifacts_dir_url = constants.PROW_VIEW_URL + spy_link[8:] + "/artifacts/" + job_type
 
     try:
-        response = requests.get(base_artifacts_dir_url, verify=False, timeout=15)
+        response = request_url(base_artifacts_dir_url, verify=False, timeout=15)
         gather_libvirt_dir_re = re.compile('gather-libvirt')
         gather_libvirt_dir_re_match = gather_libvirt_dir_re.search(response.text, re.MULTILINE|re.DOTALL)
         
@@ -409,7 +426,7 @@ def check_if_gather_libvirt_dir_exists(spy_link,job_type):
 def check_hypervisor_error(spy_link):
     build_log_url = constants.PROW_VIEW_URL + spy_link[8:] + '/build-log.txt'
     try:
-        response = requests.get(build_log_url, verify=False, timeout=15)
+        response = request_url(build_log_url, verify=False, timeout=15)
         hypervisor_re = re.compile(constants.HYPERVISOR_CONNECTION_ERROR)
         hypervisor_re_match = hypervisor_re.search(response.text)
         if hypervisor_re_match is not None:
@@ -427,17 +444,11 @@ def check_if_sensitive_info_exposed(spy_link):
     
     build_log_url = constants.PROW_VIEW_URL + spy_link[8:] + '/build-log.txt'
     try:
-        response = requests.get(build_log_url, verify=False, timeout=15)
-        senstive_info_re = re.compile('This file contained potentially sensitive information and has been removed.')
-        senstive_info_re_match = senstive_info_re.search(response.text)
-        if senstive_info_re_match is not None:
-            return True
-        else:
-            return False
-    except requests.Timeout:
-        return "Request timed out"
-    except requests.RequestException:
-        return "Error while sending request to url"
+        response = request_url(build_log_url, verify=False, timeout=15)
+        sensitive_info_re = re.compile('This file contained potentially sensitive information and has been removed.')
+        return bool(sensitive_info_re.search(response.text))
+    except (requests.Timeout, requests.RequestException) as e:
+        raise RuntimeError(f"Error in check_if_sensitive_info_exposed: {e}")
 
 def get_node_status(spy_link):
 
@@ -470,7 +481,7 @@ def get_node_status(spy_link):
     
  
     try:
-        node_log_response = requests.get(node_log_url, verify=False, timeout=15)
+        node_log_response = request_url(node_log_url, verify=False, timeout=15)
         if "NAME" in node_log_response.text:
             if version > 4.15 and job_platform == "libvirt":
                 workers="compute-"   
@@ -506,7 +517,7 @@ def check_node_crash(spy_link):
         crash_log_url = constants.PROW_VIEW_URL + spy_link[8:] + "/artifacts/" +job_type + "/ipi-conf-debug-kdump-gather-logs/artifacts/"
         
         try:
-            crash_log_response = requests.get(crash_log_url, verify=False, timeout=15)
+            crash_log_response = request_url(crash_log_url, verify=False, timeout=15)
             if "kdump.tar" in crash_log_response.text:
                 print("*********************************")
                 print ("ERROR- Crash observed in the job")
@@ -594,7 +605,7 @@ def get_quota_and_nightly(spy_link):
     build_log_url = constants.PROW_VIEW_URL + spy_link[8:] + "/build-log.txt"
     for attempt in range(1, max_retries + 1):
         try:
-            build_log_response = requests.get(build_log_url, verify=False, timeout=15)
+            build_log_response = request_url(build_log_url, verify=False, timeout=15)
             if 'ppc64le' in spy_link:      
                 if job_platform == "libvirt":
                     job_platform += "-ppc64le-s2s"
@@ -695,7 +706,7 @@ def get_failed_monitor_testcases(spy_link,job_type):
     test_log_junit_dir_url = constants.PROW_VIEW_URL + spy_link[8:] + "/artifacts/" + job_type + "/openshift-e2e-libvirt-test/artifacts/junit/"
 
     try:
-        response = requests.get(test_log_junit_dir_url, verify=False, timeout=15)
+        response = request_url(test_log_junit_dir_url, verify=False, timeout=15)
 
         if response.status_code == 200:
             monitor_test_failure_summary_filename_re = re.compile(r'(test-failures-summary_monitor_2[^.]*\.json)')
@@ -704,7 +715,7 @@ def get_failed_monitor_testcases(spy_link,job_type):
             if monitor_test_failure_summary_filename_match is not None:
                 monitor_test_failure_summary_filename_str = monitor_test_failure_summary_filename_match.group(1)
                 test_log_url=constants.PROW_VIEW_URL + spy_link[8:] + "/artifacts/" + job_type + "/openshift-e2e-libvirt-test/artifacts/junit/" + monitor_test_failure_summary_filename_str
-                response_2 = requests.get(test_log_url,verify=False, timeout=15)
+                response_2 = request_url(test_log_url,verify=False, timeout=15)
                 if response_2.status_code == 200:
                     data = response_2.json()
                     for tc in data['Tests']:
@@ -745,7 +756,7 @@ def get_failed_monitor_testcases_from_xml(spy_link,job_type):
         test_type = "openshift-e2e-libvirt-test"
     test_log_junit_dir_url = constants.PROW_VIEW_URL + spy_link[8:] + "/artifacts/" + job_type + "/" + test_type + "/artifacts/junit/"
     try:
-        response = requests.get(test_log_junit_dir_url, verify=False, timeout=15)
+        response = request_url(test_log_junit_dir_url, verify=False, timeout=15)
 
         if response.status_code == 200:
             test_failure_summary_filename_re = re.compile(r'(e2e-monitor-tests__2[^.]*\.xml)')
@@ -754,7 +765,7 @@ def get_failed_monitor_testcases_from_xml(spy_link,job_type):
             if test_failure_summary_filename_match is not None:
                 test_failure_summary_filename_str = test_failure_summary_filename_match.group(1)
                 test_log_url=constants.PROW_VIEW_URL + spy_link[8:] + "/artifacts/" + job_type + "/"+ test_type +"/artifacts/junit/" + test_failure_summary_filename_str
-                response = requests.get(test_log_url,verify=False,timeout=15)
+                response = request_url(test_log_url,verify=False,timeout=15)
                 if response.status_code == 200:
                     root = ET.fromstring(response.content)
                     for idx,testcase in enumerate(root.iter('testcase')):
@@ -838,7 +849,7 @@ def get_failed_e2e_testcases(spy_link,job_type):
         test_type = "openshift-e2e-libvirt-test"
     test_log_junit_dir_url = constants.PROW_VIEW_URL + spy_link[8:] + "/artifacts/" + job_type + "/" + test_type + "/artifacts/junit/"
     try:
-        response = requests.get(test_log_junit_dir_url, verify=False, timeout=15)
+        response = request_url(test_log_junit_dir_url, verify=False, timeout=15)
 
         if response.status_code == 200:
             test_failure_summary_filename_re = re.compile(r'(test-failures-summary_2[^.]*\.json)')
@@ -847,7 +858,7 @@ def get_failed_e2e_testcases(spy_link,job_type):
             if test_failure_summary_filename_match is not None:
                 test_failure_summary_filename_str = test_failure_summary_filename_match.group(1)
                 test_log_url=constants.PROW_VIEW_URL + spy_link[8:] + "/artifacts/" + job_type + "/"+ test_type +"/artifacts/junit/" + test_failure_summary_filename_str
-                response_2 = requests.get(test_log_url,verify=False, timeout=15)
+                response_2 = request_url(test_log_url,verify=False, timeout=15)
                 if response_2.status_code == 200:
                     data = response_2.json()
                     for tc in data['Tests']:
@@ -893,13 +904,13 @@ def get_junit_symptom_detection_testcase_failures(spy_link,job_type):
     test_log_junit_dir_url = constants.PROW_VIEW_URL + spy_link[8:] + "/artifacts/" + job_type + "/artifacts/junit/"
     symptom_detection_failed_testcase = []
     try:
-        response = requests.get(test_log_junit_dir_url,verify=False,timeout=15)
+        response = request_url(test_log_junit_dir_url,verify=False,timeout=15)
         if response.status_code == 200:
             junit_failure_summary_filename_re = re.compile('junit_symptoms.xml')
             junit_failure_summary_filename_match = junit_failure_summary_filename_re.search(response.text, re.MULTILINE|re.DOTALL)
             if junit_failure_summary_filename_match is not None:
                 test_log_junit_url = constants.PROW_VIEW_URL + spy_link[8:] + "/artifacts/" + job_type + "/artifacts/junit/junit_symptoms.xml"
-                response_2 = requests.get(test_log_junit_url,verify=False,timeout=15)
+                response_2 = request_url(test_log_junit_url,verify=False,timeout=15)
                 root = ET.fromstring(response_2.content)
                 for testcase in root.findall('.//testcase'):
                     testcase_name = testcase.get('name')
@@ -982,7 +993,7 @@ def check_ts_exe_status(spylink,jobtype):
         test_type = "openshift-e2e-libvirt-test"
     test_exe_status_url = constants.PROW_VIEW_URL + spylink[8:] + "/artifacts/" + jobtype + "/" + test_type + "/finished.json"
     try:
-        response = requests.get(test_exe_status_url, verify=False, timeout=15)
+        response = request_url(test_exe_status_url, verify=False, timeout=15)
         if response.status_code == 200:
             cluster_status = json.loads(response.text)
             return cluster_status["result"]
@@ -1102,7 +1113,7 @@ def get_jobs_with_date(prowci_url,start_date,end_date):
     url = PROW_URL + prowci_url
 
     try:
-        response = requests.get(url, verify=False, timeout=15)
+        response = request_url(url, verify=False, timeout=15)
 
 
         if response.status_code == 200:
@@ -1183,7 +1194,7 @@ def get_next_page_first_build_date(ci_next_page_spylink,end_date):
     ci_next_page_link = PROW_URL + ci_next_page_spylink
 
     try:
-        response = requests.get(ci_next_page_link, verify=False, timeout=15)
+        response = request_url(ci_next_page_link, verify=False, timeout=15)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
             script_elements = soup.find_all('script')
@@ -1262,7 +1273,11 @@ def get_brief_job_info(build_list,prow_ci_name,zone=None,job_filter='All'):
             continue
         build_status = check_job_status(build)
         cluster_status=cluster_deploy_status(build)
-        sensitive_info_expose_status=check_if_sensitive_info_exposed(build)
+        try:
+            sensitive_info_expose_status = check_if_sensitive_info_exposed(build)
+        except RuntimeError as e:
+            print(f"Warning: Could not check sensitive info exposure: {e}")
+            sensitive_info_expose_status = False
         i=i+1
         job_dict = {}
         job_dict["Job"] = prow_ci_name
@@ -1340,6 +1355,12 @@ def get_detailed_job_info(build_list, prow_ci_name, zone=None, job_filter="all")
             print("Build start time:", time)
         except (requests.exceptions.RequestException, KeyError, ValueError) as e:
             print("Error fetching build time:", e)
+        build_status = check_job_status(build)
+        try:
+            sensitive_info_expose_status = check_if_sensitive_info_exposed(build)
+        except RuntimeError as e:
+            print(f"Warning: Could not check sensitive info exposure: {e}")
+            sensitive_info_expose_status = False 
         
         build_status = check_job_status(build)
         sensitive_info_expose_status = check_if_sensitive_info_exposed(build)
