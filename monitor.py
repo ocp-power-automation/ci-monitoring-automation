@@ -316,8 +316,11 @@ def cluster_deploy_status(spy_link):
         job_log_url = constants.PROW_VIEW_URL + spy_link[8:] + '/artifacts/' + job_type + '/ipi-install-' + job_platform +'-install/finished.json'
         if "sno" in spy_link:
             job_log_url = constants.PROW_VIEW_URL + spy_link[8:] + '/artifacts/' + job_type + '/upi-install-powervs-sno/finished.json'
+        # PowerVC jobs
+        elif job_platform == "powervc":
+            job_log_url = constants.PROW_VIEW_URL+ spy_link[8:]+ '/artifacts/'+ job_type + '/ipi-install-powervc-install/finished.json'
         #Only 4.17 and above libvirt uses upi-installation.
-        if version>=4.16 and job_platform != "powervs":
+        elif version>=4.16 and job_platform != "powervs":
             job_log_url = constants.PROW_VIEW_URL + spy_link[8:] + '/artifacts/' + job_type + '/upi-install-' + job_platform +'/finished.json'
 
         try:
@@ -530,12 +533,19 @@ def get_lease(build_log_response,job_platform):
     '''
 
     lease = ""
-    zone_log_re = re.compile(r'(Acquired 1 lease\(s\) for {}-quota-slice: \[)([^]]+)(\])'.format(job_platform), re.MULTILINE|re.DOTALL)
-    zone_log_match = zone_log_re.search(build_log_response.text)
+    clean_log = re.sub(
+        r'\x1B\[[0-?]*[ -/]*[@-~]',
+        '',
+        build_log_response.text
+    )
+    zone_log_re = re.compile(
+        r'Acquired.*?\[([^\]]+)\]'
+    )
+    zone_log_match = zone_log_re.search(clean_log)
     if zone_log_match is None:
         lease = "Failed to fetch lease information"
     else:
-        lease = zone_log_match.group(2)
+        lease = zone_log_match.group(1)
     return lease
 
 def get_nightly(build_log_url,build_log_response, job_platform):
@@ -665,15 +675,15 @@ def job_classifier(spy_link):
         job_type = match.group(0)
         job_type = job_type.rstrip('/')
 
-    
     job_platform = "mce"
     if spy_link.find("powervs") != -1:
         job_platform = "powervs"
+    elif spy_link.find("powervc") != -1:
+        job_platform = "powervc"
     elif spy_link.find("libvirt") != -1:
         job_platform = "libvirt"
     elif spy_link.find("sno") != -1:
         job_platform = "sno"
-    
     return job_type,job_platform
 
 
