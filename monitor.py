@@ -89,10 +89,13 @@ def set_prow_url(ci_job_type: str)->str:
     Returns:
         string: Value of PROW_URL
     '''
+    # Modified URL pattern as Gcloud bucket is moved to public
     if ci_job_type == 'p' or ci_job_type == 'z':
-        return constants.JOB_LINK_URL+"job-history/gs/origin-ci-test/logs/"
+        # Earlier link points to bucket 'origin-ci-test"'
+        return constants.JOB_LINK_URL+"job-history/gs/test-platform-results-public/logs/"
     elif ci_job_type == 'pa':
-        return constants.JOB_LINK_URL+"job-history/gs/test-platform-results/logs/"
+         # Earlier link points to bucket 'test-platform-results"'
+        return constants.JOB_LINK_URL+"job-history/gs/test-platform-results-public/logs/"
 
 def load_config(config_file):
 
